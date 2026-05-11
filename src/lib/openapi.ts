@@ -1,24 +1,20 @@
 import { resolver } from 'hono-openapi'
 import type { ZodType } from 'zod'
 
-type MapResponsesOptions = {
+export function mapResponses(input: {
   schema: ZodType
   successMessage: string
   status?: number
-}
-
-export function mapResponses({ schema, successMessage, status = 200 }: MapResponsesOptions) {
+}) {
+  const code = String(input.status ?? 200)
   return {
-    [status]: {
-      description: successMessage,
+    [code]: {
+      description: input.successMessage,
       content: {
         'application/json': {
-          schema: resolver(schema),
+          schema: resolver(input.schema),
         },
       },
     },
-    400: { description: 'Bad Request — validation failed' },
-    404: { description: 'Not Found' },
-    500: { description: 'Internal Server Error' },
   }
 }

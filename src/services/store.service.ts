@@ -3,6 +3,17 @@ import { HTTPException } from 'hono/http-exception'
 import { toStoreResponse } from '../models/store.model'
 import type { AppEnv } from '../types/hono-env'
 
+function toSlug(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+}
+
 export function createStoreService(c: Context<AppEnv>) {
   const db = c.get('db')
 
@@ -25,10 +36,13 @@ export function createStoreService(c: Context<AppEnv>) {
       return toStoreResponse(row)
     },
 
-    async create(data: { name: string; slug: string; address?: string; phone?: string }) {
-      const existing = await db.store.findUnique({ where: { slug: data.slug } })
+    async create(data: { name: string; address?: string; phone?: string }) {
+      const slug = toSlug(data.name)
+      const existing = await db.store.findUnique({ where: { slug } })
       if (existing) throw new HTTPException(409, { message: 'Slug already in use' })
-      const row = await db.store.create({ data })
+      const row = await db.store.create({
+        data: { ...data, slug, address: data.address || null, phone: data.phone || null },
+      })
       return toStoreResponse(row)
     },
 
@@ -36,7 +50,14 @@ export function createStoreService(c: Context<AppEnv>) {
       const row = await db.store.findUnique({ where: { id } })
       if (!row) throw new HTTPException(404, { message: 'Store not found' })
       const { slug: _slug, ...safeData } = data
-      const updated = await db.store.update({ where: { id }, data: safeData })
+      const updated = await db.store.update({
+        where: { id },
+        data: {
+          ...safeData,
+          ...(safeData.address !== undefined && { address: safeData.address || null }),
+          ...(safeData.phone !== undefined && { phone: safeData.phone || null }),
+        },
+      })
       return toStoreResponse(updated)
     },
 

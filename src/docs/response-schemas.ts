@@ -1,13 +1,17 @@
 import { z } from 'zod'
 
+const dateString = z.string().datetime()
+
 export const UserResponseSchema = z.object({
   id: z.number(),
   name: z.string(),
   email: z.string().email(),
   role: z.enum(['admin', 'operator', 'viewer']),
   storeId: z.number().nullable(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  phone: z.string().nullable(),
+  active: z.boolean(),
+  createdAt: dateString,
+  updatedAt: dateString,
 })
 
 export const StoreResponseSchema = z.object({
@@ -17,15 +21,15 @@ export const StoreResponseSchema = z.object({
   address: z.string().nullable(),
   phone: z.string().nullable(),
   active: z.boolean(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  createdAt: dateString,
+  updatedAt: dateString,
 })
 
-export function dataOf<T extends z.ZodType>(schema: T) {
+function dataOf<T extends z.ZodType>(schema: T) {
   return z.object({ data: schema })
 }
 
-// Auth responses
+// Auth
 export const LoginResponseSchema = dataOf(
   z.object({
     accessToken: z.string(),
@@ -33,22 +37,16 @@ export const LoginResponseSchema = dataOf(
     user: UserResponseSchema,
   }),
 )
-
 export const RefreshResponseSchema = dataOf(
-  z.object({
-    accessToken: z.string(),
-    refreshToken: z.string(),
-  }),
+  z.object({ accessToken: z.string(), refreshToken: z.string() }),
 )
-
 export const LogoutResponseSchema = dataOf(z.null())
-
 export const SwitchStoreResponseSchema = dataOf(z.object({ accessToken: z.string() }))
 
-// User responses
+// User
 export const UserListResponseSchema = dataOf(z.array(UserResponseSchema))
 export const UserSingleResponseSchema = dataOf(UserResponseSchema)
 
-// Store responses
+// Store
 export const StoreListResponseSchema = dataOf(z.array(StoreResponseSchema))
 export const StoreSingleResponseSchema = dataOf(StoreResponseSchema)

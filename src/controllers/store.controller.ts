@@ -1,17 +1,11 @@
 import { Hono } from 'hono'
-import { describeRoute } from 'hono-openapi'
-import { zValidator as validator } from '@hono/zod-validator'
+import { describeRoute, validator } from 'hono-openapi'
 import type { AppEnv } from '../types/hono-env'
 import { StoreRequestSchema } from '../schemas/store.schema'
 import { createStoreService } from '../services/store.service'
 import { requireRole } from '../middlewares/role.middleware'
-import {
-  resolver,
-  errorResponses,
-  idPathParam,
-  queryStringParam,
-  queryBooleanParam,
-} from '../docs/openapi'
+import { errorResponses, idPathParam, queryParam } from '../docs/openapi'
+import { mapResponses } from '../lib/openapi'
 import { StoreListResponseSchema, StoreSingleResponseSchema } from '../docs/response-schemas'
 
 export const storeController = new Hono<AppEnv>()
@@ -20,17 +14,15 @@ storeController.get(
   '/stores',
   describeRoute({
     summary: 'Listar lojas',
+    description: 'Retorna todas as lojas. Filtrável por nome, slug e status.',
     tags: ['Stores'],
     security: [{ bearerAuth: [] }],
     parameters: [
-      queryStringParam('q', 'Filtrar por nome ou slug'),
-      queryBooleanParam('active', 'Filtrar por status ativo/inativo'),
+      queryParam('q', { type: 'string' }, 'Filtrar por nome ou slug'),
+      queryParam('active', { type: 'boolean' }, 'Filtrar por status ativo/inativo'),
     ],
     responses: {
-      200: {
-        description: 'OK',
-        content: { 'application/json': { schema: resolver(StoreListResponseSchema) } },
-      },
+      ...mapResponses({ schema: StoreListResponseSchema, successMessage: 'Lojas listadas com sucesso' }),
       ...errorResponses,
     },
   }),
@@ -48,19 +40,11 @@ storeController.post(
   '/stores',
   describeRoute({
     summary: 'Criar loja',
+    description: 'Cria uma nova loja. O slug deve ser único.',
     tags: ['Stores'],
     security: [{ bearerAuth: [] }],
-    requestBody: {
-      required: true,
-      content: {
-        'application/json': { schema: resolver(StoreRequestSchema.CREATE) },
-      },
-    },
     responses: {
-      201: {
-        description: 'Created',
-        content: { 'application/json': { schema: resolver(StoreSingleResponseSchema) } },
-      },
+      ...mapResponses({ schema: StoreSingleResponseSchema, successMessage: 'Loja criada com sucesso', status: 201 }),
       ...errorResponses,
     },
   }),
@@ -78,14 +62,12 @@ storeController.get(
   '/stores/:id',
   describeRoute({
     summary: 'Buscar loja por id',
+    description: 'Retorna os dados de uma loja específica.',
     tags: ['Stores'],
     security: [{ bearerAuth: [] }],
     parameters: [idPathParam],
     responses: {
-      200: {
-        description: 'OK',
-        content: { 'application/json': { schema: resolver(StoreSingleResponseSchema) } },
-      },
+      ...mapResponses({ schema: StoreSingleResponseSchema, successMessage: 'Loja encontrada' }),
       ...errorResponses,
     },
   }),
@@ -103,20 +85,12 @@ storeController.put(
   '/stores/:id',
   describeRoute({
     summary: 'Atualizar loja',
+    description: 'Atualiza os dados de uma loja. O slug não pode ser alterado.',
     tags: ['Stores'],
     security: [{ bearerAuth: [] }],
     parameters: [idPathParam],
-    requestBody: {
-      required: true,
-      content: {
-        'application/json': { schema: resolver(StoreRequestSchema.UPDATE) },
-      },
-    },
     responses: {
-      200: {
-        description: 'OK',
-        content: { 'application/json': { schema: resolver(StoreSingleResponseSchema) } },
-      },
+      ...mapResponses({ schema: StoreSingleResponseSchema, successMessage: 'Loja atualizada com sucesso' }),
       ...errorResponses,
     },
   }),
@@ -136,14 +110,12 @@ storeController.delete(
   '/stores/:id',
   describeRoute({
     summary: 'Desativar loja',
+    description: 'Faz soft delete da loja (active = false). O registro não é removido do banco.',
     tags: ['Stores'],
     security: [{ bearerAuth: [] }],
     parameters: [idPathParam],
     responses: {
-      200: {
-        description: 'OK',
-        content: { 'application/json': { schema: resolver(StoreSingleResponseSchema) } },
-      },
+      ...mapResponses({ schema: StoreSingleResponseSchema, successMessage: 'Loja desativada com sucesso' }),
       ...errorResponses,
     },
   }),

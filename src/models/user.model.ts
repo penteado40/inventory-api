@@ -5,6 +5,8 @@ export type UserRow = {
   password: string
   role: 'admin' | 'operator' | 'viewer'
   storeId: number | null
+  phone: string | null
+  active: boolean
   createdAt: Date
   updatedAt: Date
 }

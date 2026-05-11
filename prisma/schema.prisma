@@ -15,7 +15,7 @@ enum Role {
 model Store {
   id        Int      @id @default(autoincrement())
   name      String
-  slug      String   @unique
+  slug      String?   @unique
   address   String?
   phone     String?
   active    Boolean  @default(true)
@@ -31,6 +31,8 @@ model User {
   password      String
   role          Role           @default(operator)
   storeId       Int?
+  phone         String?
+  active        Boolean        @default(true)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   store         Store?         @relation(fields: [storeId], references: [id])

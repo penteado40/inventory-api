@@ -1,16 +1,12 @@
 import { Hono } from 'hono'
-import { describeRoute } from 'hono-openapi'
-import { zValidator as validator } from '@hono/zod-validator'
+import { describeRoute, validator } from 'hono-openapi'
 import type { AppEnv } from '../types/hono-env'
 import { AuthRequestSchema } from '../schemas/auth.schema'
 import { createAuthService } from '../services/auth.service'
 import { authMiddleware } from '../middlewares/auth.middleware'
 import { requireRole } from '../middlewares/role.middleware'
-import {
-  resolver,
-  errorResponses,
-  publicErrorResponses,
-} from '../docs/openapi'
+import { errorResponses, publicErrorResponses } from '../docs/openapi'
+import { mapResponses } from '../lib/openapi'
 import {
   LoginResponseSchema,
   RefreshResponseSchema,
@@ -24,18 +20,10 @@ authController.post(
   '/auth/login',
   describeRoute({
     summary: 'Login',
+    description: 'Autentica credenciais e retorna access token + refresh token.',
     tags: ['Auth'],
-    requestBody: {
-      required: true,
-      content: {
-        'application/json': { schema: resolver(AuthRequestSchema.LOGIN) },
-      },
-    },
     responses: {
-      200: {
-        description: 'OK',
-        content: { 'application/json': { schema: resolver(LoginResponseSchema) } },
-      },
+      ...mapResponses({ schema: LoginResponseSchema, successMessage: 'Login realizado com sucesso' }),
       ...publicErrorResponses,
     },
   }),
@@ -52,18 +40,10 @@ authController.post(
   '/auth/refresh',
   describeRoute({
     summary: 'Renovar access token',
+    description: 'Troca um refresh token válido por um novo par access + refresh token.',
     tags: ['Auth'],
-    requestBody: {
-      required: true,
-      content: {
-        'application/json': { schema: resolver(AuthRequestSchema.REFRESH) },
-      },
-    },
     responses: {
-      200: {
-        description: 'OK',
-        content: { 'application/json': { schema: resolver(RefreshResponseSchema) } },
-      },
+      ...mapResponses({ schema: RefreshResponseSchema, successMessage: 'Tokens renovados com sucesso' }),
       ...publicErrorResponses,
     },
   }),
@@ -80,13 +60,11 @@ authController.post(
   '/auth/logout',
   describeRoute({
     summary: 'Logout',
+    description: 'Invalida os refresh tokens do usuário autenticado.',
     tags: ['Auth'],
     security: [{ bearerAuth: [] }],
     responses: {
-      200: {
-        description: 'OK',
-        content: { 'application/json': { schema: resolver(LogoutResponseSchema) } },
-      },
+      ...mapResponses({ schema: LogoutResponseSchema, successMessage: 'Logout realizado com sucesso' }),
       ...errorResponses,
     },
   }),
@@ -103,19 +81,11 @@ authController.post(
   '/auth/switch-store',
   describeRoute({
     summary: 'Trocar contexto de loja (admin)',
+    description: 'Gera um novo access token com storeId da loja selecionada. Exclusivo para admin.',
     tags: ['Auth'],
     security: [{ bearerAuth: [] }],
-    requestBody: {
-      required: true,
-      content: {
-        'application/json': { schema: resolver(AuthRequestSchema.SWITCH_STORE) },
-      },
-    },
     responses: {
-      200: {
-        description: 'OK',
-        content: { 'application/json': { schema: resolver(SwitchStoreResponseSchema) } },
-      },
+      ...mapResponses({ schema: SwitchStoreResponseSchema, successMessage: 'Contexto de loja alterado' }),
       ...errorResponses,
     },
   }),

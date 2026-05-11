@@ -10,9 +10,9 @@ export const securityScheme = {
 
 export const storeIdHeader = {
   name: 'X-Store-Id',
-  in: 'header',
+  in: 'header' as const,
   required: false,
-  schema: { type: 'integer' },
+  schema: { type: 'integer' as const },
   description: 'Admin only: filtra dados por loja específica. Omitir = visão global.',
 }
 
@@ -23,32 +23,17 @@ export const idPathParam = {
   schema: { type: 'integer' as const, minimum: 1 },
 }
 
-export function queryStringParam(name: string, description?: string) {
+export function queryParam(
+  name: string,
+  schema: { type: 'string' | 'number' | 'integer' | 'boolean'; enum?: string[] },
+  description?: string,
+) {
   return {
     name,
     in: 'query' as const,
     required: false,
-    schema: { type: 'string' as const },
-    ...(description ? { description } : {}),
-  }
-}
-
-export function queryEnumParam(name: string, values: string[], description?: string) {
-  return {
-    name,
-    in: 'query' as const,
-    required: false,
-    schema: { type: 'string' as const, enum: values },
-    ...(description ? { description } : {}),
-  }
-}
-
-export function queryBooleanParam(name: string, description?: string) {
-  return {
-    name,
-    in: 'query' as const,
-    required: false,
-    schema: { type: 'boolean' as const },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    schema: schema as any,
     ...(description ? { description } : {}),
   }
 }

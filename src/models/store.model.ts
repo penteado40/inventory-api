@@ -1,7 +1,7 @@
 export type StoreRow = {
   id: number
   name: string
-  slug: string
+  slug: string | null
   address: string | null
   phone: string | null
   active: boolean
