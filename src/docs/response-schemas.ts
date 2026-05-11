@@ -21,6 +21,7 @@ export const StoreResponseSchema = z.object({
   address: z.string().nullable(),
   phone: z.string().nullable(),
   active: z.boolean(),
+  requireProductCode: z.boolean(),
   createdAt: dateString,
   updatedAt: dateString,
 })

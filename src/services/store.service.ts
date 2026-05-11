@@ -36,7 +36,7 @@ export function createStoreService(c: Context<AppEnv>) {
       return toStoreResponse(row)
     },
 
-    async create(data: { name: string; address?: string; phone?: string }) {
+    async create(data: { name: string; address?: string; phone?: string; requireProductCode?: boolean }) {
       const slug = toSlug(data.name)
       const existing = await db.store.findUnique({ where: { slug } })
       if (existing) throw new HTTPException(409, { message: 'Slug already in use' })
@@ -46,7 +46,7 @@ export function createStoreService(c: Context<AppEnv>) {
       return toStoreResponse(row)
     },
 
-    async update(id: number, data: { name?: string; slug?: string; address?: string; phone?: string }) {
+    async update(id: number, data: { name?: string; slug?: string; address?: string; phone?: string; requireProductCode?: boolean }) {
       const row = await db.store.findUnique({ where: { id } })
       if (!row) throw new HTTPException(404, { message: 'Store not found' })
       const { slug: _slug, ...safeData } = data

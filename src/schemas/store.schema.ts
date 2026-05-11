@@ -4,6 +4,7 @@ const CREATE = z.object({
   name: z.string().min(1),
   address: z.string().optional(),
   phone: z.string().optional(),
+  requireProductCode: z.boolean().optional(),
 })
 
 const UPDATE = CREATE.partial()

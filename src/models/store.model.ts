@@ -5,6 +5,7 @@ export type StoreRow = {
   address: string | null
   phone: string | null
   active: boolean
+  requireProductCode: boolean
   createdAt: Date
   updatedAt: Date
 }
