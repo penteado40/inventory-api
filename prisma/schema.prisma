@@ -23,6 +23,8 @@ model Store {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
   users               User[]
+  locationTypes       LocationType[]
+  locations           Location[]
 }
 
 model User {
@@ -38,6 +40,36 @@ model User {
   updatedAt     DateTime       @updatedAt
   store         Store?         @relation(fields: [storeId], references: [id])
   refreshTokens RefreshToken[]
+}
+
+model LocationType {
+  id        Int        @id @default(autoincrement())
+  name      String
+  storeId   Int
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  store     Store      @relation(fields: [storeId], references: [id])
+  locations Location[]
+
+  @@unique([name, storeId])
+}
+
+model Location {
+  id             Int          @id @default(autoincrement())
+  number         Int
+  locationTypeId Int
+  storeId        Int
+  parentId       Int?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  locationType   LocationType @relation(fields: [locationTypeId], references: [id])
+  store          Store        @relation(fields: [storeId], references: [id])
+  parent         Location?    @relation("LocationChildren", fields: [parentId], references: [id])
+  children       Location[]   @relation("LocationChildren")
+
+  @@unique([locationTypeId, number, parentId, storeId])
 }
 
 model RefreshToken {

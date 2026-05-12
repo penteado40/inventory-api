@@ -1,3 +1,5 @@
 export { authController } from './auth.routes'
 export { storeController } from './store.routes'
 export { userController } from './user.routes'
+export { locationTypeController } from './location-type.routes'
+export { locationController } from './location.routes'

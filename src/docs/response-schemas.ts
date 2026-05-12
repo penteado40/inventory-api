@@ -51,3 +51,31 @@ export const UserSingleResponseSchema = dataOf(UserResponseSchema)
 // Store
 export const StoreListResponseSchema = dataOf(z.array(StoreResponseSchema))
 export const StoreSingleResponseSchema = dataOf(StoreResponseSchema)
+
+// LocationType
+export const LocationTypeResponseSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  storeId: z.number(),
+  createdAt: dateString,
+  updatedAt: dateString,
+})
+export const LocationTypeListResponseSchema = dataOf(z.array(LocationTypeResponseSchema))
+export const LocationTypeSingleResponseSchema = dataOf(LocationTypeResponseSchema)
+
+// Location
+export const LocationResponseSchema = z.object({
+  id: z.number(),
+  number: z.number(),
+  locationTypeId: z.number(),
+  storeId: z.number(),
+  parentId: z.number().nullable(),
+  displayName: z.string(),
+  createdAt: dateString,
+  updatedAt: dateString,
+})
+export const LocationWithChildrenResponseSchema = LocationResponseSchema.extend({
+  children: z.array(LocationResponseSchema),
+})
+export const LocationListResponseSchema = dataOf(z.array(LocationWithChildrenResponseSchema))
+export const LocationSingleResponseSchema = dataOf(LocationWithChildrenResponseSchema)
