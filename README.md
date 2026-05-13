@@ -27,7 +27,7 @@ API REST multi-tenant para gestão de inventário — controle de entrada e saí
 ### 1. Clone o repositório
 
 ```bash
-git clone https://github.com/seu-usuario/inventory-api.git
+git clone https://github.com/penteado40/inventory-api.git
 cd inventory-api
 ```
 
