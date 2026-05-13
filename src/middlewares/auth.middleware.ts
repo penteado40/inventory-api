@@ -2,6 +2,7 @@ import { createMiddleware } from 'hono/factory'
 import { verify } from 'hono/jwt'
 import { HTTPException } from 'hono/http-exception'
 import type { AppEnv } from '../types/hono-env'
+import { Role } from '../enums'
 
 export const authMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   const authorization = c.req.header('Authorization')
@@ -23,7 +24,7 @@ export const authMiddleware = createMiddleware<AppEnv>(async (c, next) => {
     throw new HTTPException(401, { message: 'Invalid token' })
   }
 
-  const role = payload.role as 'admin' | 'operator' | 'viewer'
+  const role = payload.role as Role
   const storeId = (payload.storeId ?? null) as number | null
 
   if (storeId == null && role !== 'admin') {

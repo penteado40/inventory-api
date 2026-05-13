@@ -1,11 +1,12 @@
 import { createMiddleware } from 'hono/factory'
 import { HTTPException } from 'hono/http-exception'
 import type { AppEnv } from '../types/hono-env'
+import { Role } from '../enums'
 
 export const storeContextMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   const { role, storeId: tokenStoreId } = c.get('jwtPayload')
 
-  if (role === 'operator' || role === 'viewer') {
+  if (role === Role.operator || role === Role.viewer) {
     c.set('storeId', tokenStoreId)
     return await next()
   }

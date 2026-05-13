@@ -79,3 +79,15 @@ export const LocationWithChildrenResponseSchema = LocationResponseSchema.extend(
 })
 export const LocationListResponseSchema = dataOf(z.array(LocationWithChildrenResponseSchema))
 export const LocationSingleResponseSchema = dataOf(LocationWithChildrenResponseSchema)
+
+// MovementType
+export const MovementTypeResponseSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  behavior: z.enum(['entrada', 'saida', 'encomenda']),
+  storeId: z.number(),
+  createdAt: dateString,
+  updatedAt: dateString,
+})
+export const MovementTypeListResponseSchema = dataOf(z.array(MovementTypeResponseSchema))
+export const MovementTypeSingleResponseSchema = dataOf(MovementTypeResponseSchema)

@@ -1,9 +1,12 @@
+import { Role } from '../enums'
+export { Role }
+
 export type UserRow = {
   id: number
   name: string
   email: string
   password: string
-  role: 'admin' | 'operator' | 'viewer'
+  role: Role
   storeId: number | null
   phone: string | null
   active: boolean

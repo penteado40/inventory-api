@@ -1,8 +1,9 @@
 import type { PrismaClient } from '@prisma/client'
+import { Role } from '../enums'
 
 export type JwtPayload = {
   sub: number
-  role: 'admin' | 'operator' | 'viewer'
+  role: Role
   storeId: number | null
 }
 

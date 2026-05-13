@@ -25,6 +25,7 @@ model Store {
   users               User[]
   locationTypes       LocationType[]
   locations           Location[]
+  movementTypes       MovementType[]
 }
 
 model User {
@@ -70,6 +71,25 @@ model Location {
   children       Location[]   @relation("LocationChildren")
 
   @@unique([locationTypeId, number, parentId, storeId])
+}
+
+enum Behavior {
+  entrada
+  saida
+  encomenda
+}
+
+model MovementType {
+  id        Int       @id @default(autoincrement())
+  name      String
+  behavior  Behavior
+  storeId   Int
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  store     Store     @relation(fields: [storeId], references: [id])
+
+  @@unique([name, storeId])
 }
 
 model RefreshToken {

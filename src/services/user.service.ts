@@ -3,13 +3,14 @@ import { HTTPException } from 'hono/http-exception'
 import bcrypt from 'bcryptjs'
 import { toUserResponse } from '../models/user.model'
 import type { AppEnv } from '../types/hono-env'
+import { Role } from '../enums'
 
 export function createUserService(c: Context<AppEnv>) {
   const db = c.get('db')
   const storeId = c.get('storeId')
 
   return {
-    async list(search: { q?: string; role?: 'admin' | 'operator' | 'viewer'; active?: boolean }) {
+    async list(search: { q?: string; role?: Role; active?: boolean }) {
       const rows = await db.user.findMany({
         where: {
           active: search.active,
@@ -35,7 +36,7 @@ export function createUserService(c: Context<AppEnv>) {
       name: string
       email: string
       password: string
-      role: 'admin' | 'operator' | 'viewer'
+      role: Role
       storeId?: number
       phone?: string
     }) {
@@ -80,7 +81,7 @@ export function createUserService(c: Context<AppEnv>) {
       return toUserResponse(updated)
     },
 
-    async changeRole(id: number, role: 'admin' | 'operator' | 'viewer') {
+    async changeRole(id: number, role: Role) {
       const row = await db.user.findFirst({
         where: { id, active: true, ...(storeId ? { storeId } : {}) },
       })

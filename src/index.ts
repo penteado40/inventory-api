@@ -4,7 +4,7 @@ import { HTTPException } from 'hono/http-exception'
 import type { AppEnv } from './types/hono-env'
 import { prisma } from './lib/prisma'
 import { startDocs } from './lib/docs'
-import { authController, storeController, userController, locationTypeController, locationController } from './routes/index'
+import { authController, storeController, userController, locationTypeController, locationController, movementTypeController } from './routes/index'
 import { authMiddleware } from './middlewares/auth.middleware'
 import { storeContextMiddleware } from './middlewares/store-context.middleware'
 
@@ -43,6 +43,7 @@ app.route('/', storeController)
 app.route('/', userController)
 app.route('/', locationTypeController)
 app.route('/', locationController)
+app.route('/', movementTypeController)
 
 export default {
   port: 3000,
