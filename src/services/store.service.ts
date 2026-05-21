@@ -1,7 +1,6 @@
-import type { Context } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { toStoreResponse } from '../models/store.model'
-import type { AppEnv } from '../types/hono-env'
+import type { ServiceDeps } from '../types/hono-env'
 
 function toSlug(name: string): string {
   return name
@@ -14,9 +13,7 @@ function toSlug(name: string): string {
     .replace(/-+/g, '-')
 }
 
-export function createStoreService(c: Context<AppEnv>) {
-  const db = c.get('db')
-
+export function createStoreService({ db }: ServiceDeps) {
   return {
     async list(search: { q?: string; active?: boolean }) {
       const rows = await db.store.findMany({

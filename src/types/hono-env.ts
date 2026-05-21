@@ -14,3 +14,8 @@ export type AppEnv = {
     storeId: number | null
   }
 }
+
+export type ServiceDeps = {
+  db: PrismaClient
+  storeId: number | null
+}

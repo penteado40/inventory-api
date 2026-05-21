@@ -1,18 +1,15 @@
-import type { Context } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { toMovementTypeResponse } from '../models/movement-type.model'
-import type { AppEnv } from '../types/hono-env'
+import type { ServiceDeps } from '../types/hono-env'
 import { Behavior } from '../enums'
+import { storeScope } from '../lib/scoped-query'
 
-export function createMovementTypeService(c: Context<AppEnv>) {
-  const db = c.get('db')
-  const storeId = c.get('storeId')
-
+export function createMovementTypeService({ db, storeId }: ServiceDeps) {
   return {
     async list(search: { behavior?: Behavior; q?: string }) {
       const rows = await db.movementType.findMany({
         where: {
-          ...(storeId ? { storeId } : {}),
+          ...storeScope(storeId),
           ...(search.behavior ? { behavior: search.behavior } : {}),
           ...(search.q ? { name: { contains: search.q } } : {}),
         },
@@ -34,7 +31,7 @@ export function createMovementTypeService(c: Context<AppEnv>) {
 
     async update(id: number, data: { name?: string }) {
       const row = await db.movementType.findFirst({
-        where: { id, ...(storeId ? { storeId } : {}) },
+        where: { id, ...storeScope(storeId) },
       })
       if (!row) throw new HTTPException(404, { message: 'Movement type not found' })
 
@@ -51,7 +48,7 @@ export function createMovementTypeService(c: Context<AppEnv>) {
 
     async remove(id: number) {
       const row = await db.movementType.findFirst({
-        where: { id, ...(storeId ? { storeId } : {}) },
+        where: { id, ...storeScope(storeId) },
       })
       if (!row) throw new HTTPException(404, { message: 'Movement type not found' })
 

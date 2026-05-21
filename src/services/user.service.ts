@@ -1,20 +1,17 @@
-import type { Context } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import bcrypt from 'bcryptjs'
 import { toUserResponse } from '../models/user.model'
-import type { AppEnv } from '../types/hono-env'
+import type { ServiceDeps } from '../types/hono-env'
 import { Role } from '../enums'
+import { storeScope } from '../lib/scoped-query'
 
-export function createUserService(c: Context<AppEnv>) {
-  const db = c.get('db')
-  const storeId = c.get('storeId')
-
+export function createUserService({ db, storeId }: ServiceDeps) {
   return {
     async list(search: { q?: string; role?: Role; active?: boolean }) {
       const rows = await db.user.findMany({
         where: {
           active: search.active,
-          ...(storeId ? { storeId } : {}),
+          ...storeScope(storeId),
           ...(search.role ? { role: search.role } : {}),
           ...(search.q
             ? { OR: [{ name: { contains: search.q } }, { email: { contains: search.q } }] }
@@ -26,7 +23,7 @@ export function createUserService(c: Context<AppEnv>) {
 
     async getById(id: number) {
       const row = await db.user.findFirst({
-        where: { id, active: true, ...(storeId ? { storeId } : {}) },
+        where: { id, active: true, ...storeScope(storeId) },
       })
       if (!row) throw new HTTPException(404, { message: 'User not found' })
       return toUserResponse(row)
@@ -58,7 +55,7 @@ export function createUserService(c: Context<AppEnv>) {
 
     async update(id: number, data: { name?: string; phone?: string }) {
       const row = await db.user.findFirst({
-        where: { id, active: true, ...(storeId ? { storeId } : {}) },
+        where: { id, active: true, ...storeScope(storeId) },
       })
       if (!row) throw new HTTPException(404, { message: 'User not found' })
       const updated = await db.user.update({
@@ -73,7 +70,7 @@ export function createUserService(c: Context<AppEnv>) {
 
     async resetPassword(id: number, password: string) {
       const row = await db.user.findFirst({
-        where: { id, active: true, ...(storeId ? { storeId } : {}) },
+        where: { id, active: true, ...storeScope(storeId) },
       })
       if (!row) throw new HTTPException(404, { message: 'User not found' })
       const hashed = await bcrypt.hash(password, 10)
@@ -83,7 +80,7 @@ export function createUserService(c: Context<AppEnv>) {
 
     async changeRole(id: number, role: Role) {
       const row = await db.user.findFirst({
-        where: { id, active: true, ...(storeId ? { storeId } : {}) },
+        where: { id, active: true, ...storeScope(storeId) },
       })
       if (!row) throw new HTTPException(404, { message: 'User not found' })
       const updated = await db.user.update({ where: { id }, data: { role } })
@@ -92,7 +89,7 @@ export function createUserService(c: Context<AppEnv>) {
 
     async changeStore(id: number, newStoreId: number | null) {
       const row = await db.user.findFirst({
-        where: { id, active: true, ...(storeId ? { storeId } : {}) },
+        where: { id, active: true, ...storeScope(storeId) },
       })
       if (!row) throw new HTTPException(404, { message: 'User not found' })
       if (newStoreId !== null) {
@@ -106,7 +103,7 @@ export function createUserService(c: Context<AppEnv>) {
 
     async remove(id: number) {
       const row = await db.user.findFirst({
-        where: { id, active: true, ...(storeId ? { storeId } : {}) },
+        where: { id, active: true, ...storeScope(storeId) },
       })
       if (!row) throw new HTTPException(404, { message: 'User not found' })
       const updated = await db.user.update({ where: { id }, data: { active: false } })

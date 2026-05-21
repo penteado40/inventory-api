@@ -5,6 +5,7 @@ import { UserRequestSchema } from '../schemas/user.schema'
 import { createUserService } from '../services/user.service'
 import { requireRole } from '../middlewares/role.middleware'
 import { errorResponses, idPathParam, queryParam } from '../docs/openapi'
+import { getServiceDeps } from '../lib/service-deps'
 import { mapResponses } from '../lib/openapi'
 import { UserListResponseSchema, UserSingleResponseSchema } from '../docs/response-schemas'
 
@@ -30,7 +31,7 @@ userController.get(
   requireRole('admin'),
   async (c) => {
     const search = c.req.valid('query')
-    const service = createUserService(c)
+    const service = createUserService(getServiceDeps(c))
     const data = await service.list(search)
     return c.json({ data })
   },
@@ -52,7 +53,7 @@ userController.post(
   requireRole('admin'),
   async (c) => {
     const body = c.req.valid('json')
-    const service = createUserService(c)
+    const service = createUserService(getServiceDeps(c))
     const data = await service.create(body)
     return c.json({ data }, 201)
   },
@@ -75,7 +76,7 @@ userController.get(
   requireRole('admin'),
   async (c) => {
     const { id } = c.req.valid('param')
-    const service = createUserService(c)
+    const service = createUserService(getServiceDeps(c))
     const data = await service.getById(id)
     return c.json({ data })
   },
@@ -100,7 +101,7 @@ userController.put(
   async (c) => {
     const { id } = c.req.valid('param')
     const body = c.req.valid('json')
-    const service = createUserService(c)
+    const service = createUserService(getServiceDeps(c))
     const data = await service.update(id, body)
     return c.json({ data })
   },
@@ -125,7 +126,7 @@ userController.put(
   async (c) => {
     const { id } = c.req.valid('param')
     const { password } = c.req.valid('json')
-    const service = createUserService(c)
+    const service = createUserService(getServiceDeps(c))
     const data = await service.resetPassword(id, password)
     return c.json({ data })
   },
@@ -150,7 +151,7 @@ userController.put(
   async (c) => {
     const { id } = c.req.valid('param')
     const { role } = c.req.valid('json')
-    const service = createUserService(c)
+    const service = createUserService(getServiceDeps(c))
     const data = await service.changeRole(id, role)
     return c.json({ data })
   },
@@ -175,7 +176,7 @@ userController.put(
   async (c) => {
     const { id } = c.req.valid('param')
     const { storeId } = c.req.valid('json')
-    const service = createUserService(c)
+    const service = createUserService(getServiceDeps(c))
     const data = await service.changeStore(id, storeId)
     return c.json({ data })
   },
@@ -198,7 +199,7 @@ userController.delete(
   requireRole('admin'),
   async (c) => {
     const { id } = c.req.valid('param')
-    const service = createUserService(c)
+    const service = createUserService(getServiceDeps(c))
     const data = await service.remove(id)
     return c.json({ data })
   },

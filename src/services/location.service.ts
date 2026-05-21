@@ -1,7 +1,8 @@
-import type { Context } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { toLocationResponse, toLocationWithChildrenResponse } from '../models/location.model'
-import type { AppEnv } from '../types/hono-env'
+import type { ServiceDeps } from '../types/hono-env'
+import { storeScope } from '../lib/scoped-query'
+import { createLocationHierarchy } from '../lib/location-hierarchy'
 
 const includeLocationType = { locationType: true } as const
 const includeWithChildren = {
@@ -9,29 +10,15 @@ const includeWithChildren = {
   children: { include: { locationType: true } },
 } as const
 
-export function createLocationService(c: Context<AppEnv>) {
-  const db = c.get('db')
-  const storeId = c.get('storeId')
-
-  async function wouldCreateCycle(startId: number, forbiddenId: number): Promise<boolean> {
-    let current: number | null = startId
-    while (current !== null) {
-      if (current === forbiddenId) return true
-      const loc: { parentId: number | null } | null = await db.location.findUnique({
-        where: { id: current },
-        select: { parentId: true },
-      })
-      current = loc?.parentId ?? null
-    }
-    return false
-  }
+export function createLocationService({ db, storeId }: ServiceDeps) {
+  const hierarchy = createLocationHierarchy(db)
 
   return {
     async list(search: { locationTypeId?: number; parentId?: number; q?: string }) {
       const parsedQ = search.q ? parseInt(search.q, 10) : NaN
       const rows = await db.location.findMany({
         where: {
-          ...(storeId ? { storeId } : {}),
+          ...storeScope(storeId),
           ...(search.locationTypeId ? { locationTypeId: search.locationTypeId } : {}),
           parentId: search.parentId ?? null,
           ...(search.q
@@ -50,7 +37,7 @@ export function createLocationService(c: Context<AppEnv>) {
 
     async getById(id: number) {
       const row = await db.location.findFirst({
-        where: { id, ...(storeId ? { storeId } : {}) },
+        where: { id, ...storeScope(storeId) },
         include: includeWithChildren,
       })
       if (!row) throw new HTTPException(404, { message: 'Location not found' })
@@ -61,15 +48,12 @@ export function createLocationService(c: Context<AppEnv>) {
       if (!storeId) throw new HTTPException(400, { message: 'X-Store-Id header required' })
 
       const locType = await db.locationType.findFirst({
-        where: { id: data.locationTypeId, ...(storeId ? { storeId } : {}) },
+        where: { id: data.locationTypeId, ...storeScope(storeId) },
       })
       if (!locType) throw new HTTPException(404, { message: 'Location type not found' })
 
       if (data.parentId != null) {
-        const parent = await db.location.findUnique({ where: { id: data.parentId } })
-        if (!parent) throw new HTTPException(404, { message: 'Parent location not found' })
-        if (parent.storeId !== storeId)
-          throw new HTTPException(422, { message: 'Parent location belongs to another store' })
+        await hierarchy.validateParent(data.parentId, storeId)
       }
 
       const conflict = await db.location.findFirst({
@@ -96,14 +80,14 @@ export function createLocationService(c: Context<AppEnv>) {
 
     async update(id: number, data: { number?: number; locationTypeId?: number; parentId?: number | null }) {
       const current = await db.location.findFirst({
-        where: { id, ...(storeId ? { storeId } : {}) },
+        where: { id, ...storeScope(storeId) },
         include: includeLocationType,
       })
       if (!current) throw new HTTPException(404, { message: 'Location not found' })
 
       if (data.locationTypeId !== undefined) {
         const locType = await db.locationType.findFirst({
-          where: { id: data.locationTypeId, ...(storeId ? { storeId } : {}) },
+          where: { id: data.locationTypeId, ...storeScope(storeId) },
         })
         if (!locType) throw new HTTPException(404, { message: 'Location type not found' })
       }
@@ -112,12 +96,9 @@ export function createLocationService(c: Context<AppEnv>) {
         if (data.parentId === id)
           throw new HTTPException(422, { message: 'Circular location reference' })
 
-        const parent = await db.location.findUnique({ where: { id: data.parentId } })
-        if (!parent) throw new HTTPException(404, { message: 'Parent location not found' })
-        if (parent.storeId !== current.storeId)
-          throw new HTTPException(422, { message: 'Parent location belongs to another store' })
+        await hierarchy.validateParent(data.parentId, current.storeId)
 
-        if (await wouldCreateCycle(data.parentId, id))
+        if (await hierarchy.wouldCreateCycle(data.parentId, id))
           throw new HTTPException(422, { message: 'Circular location reference' })
       }
 
@@ -146,7 +127,7 @@ export function createLocationService(c: Context<AppEnv>) {
 
     async remove(id: number) {
       const row = await db.location.findFirst({
-        where: { id, ...(storeId ? { storeId } : {}) },
+        where: { id, ...storeScope(storeId) },
         include: includeLocationType,
       })
       if (!row) throw new HTTPException(404, { message: 'Location not found' })

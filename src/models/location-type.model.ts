@@ -1,3 +1,7 @@
+import { z } from 'zod'
+
+const dateString = z.string().datetime()
+
 export type LocationTypeRow = {
   id: number
   name: string
@@ -6,12 +10,20 @@ export type LocationTypeRow = {
   updatedAt: Date
 }
 
-export type LocationTypeResponse = LocationTypeRow
+export const LocationTypeResponseSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  storeId: z.number(),
+  createdAt: dateString,
+  updatedAt: dateString,
+})
+
+export type LocationTypeResponse = z.infer<typeof LocationTypeResponseSchema>
 
 export function toLocationTypeResponse(row: LocationTypeRow): LocationTypeResponse {
   return {
     ...row,
-    createdAt: new Date(row.createdAt.toISOString()),
-    updatedAt: new Date(row.updatedAt.toISOString()),
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
   }
 }

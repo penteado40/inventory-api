@@ -1,30 +1,18 @@
 import { z } from 'zod'
+import { UserResponseSchema } from '../models/user.model'
+import { StoreResponseSchema } from '../models/store.model'
+import { LocationTypeResponseSchema } from '../models/location-type.model'
+import { LocationResponseSchema, LocationWithChildrenResponseSchema } from '../models/location.model'
+import { MovementTypeResponseSchema } from '../models/movement-type.model'
 
-const dateString = z.string().datetime()
-
-export const UserResponseSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  email: z.string().email(),
-  role: z.enum(['admin', 'operator', 'viewer']),
-  storeId: z.number().nullable(),
-  phone: z.string().nullable(),
-  active: z.boolean(),
-  createdAt: dateString,
-  updatedAt: dateString,
-})
-
-export const StoreResponseSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  slug: z.string(),
-  address: z.string().nullable(),
-  phone: z.string().nullable(),
-  active: z.boolean(),
-  requireProductCode: z.boolean(),
-  createdAt: dateString,
-  updatedAt: dateString,
-})
+export {
+  UserResponseSchema,
+  StoreResponseSchema,
+  LocationTypeResponseSchema,
+  LocationResponseSchema,
+  LocationWithChildrenResponseSchema,
+  MovementTypeResponseSchema,
+}
 
 function dataOf<T extends z.ZodType>(schema: T) {
   return z.object({ data: schema })
@@ -53,41 +41,13 @@ export const StoreListResponseSchema = dataOf(z.array(StoreResponseSchema))
 export const StoreSingleResponseSchema = dataOf(StoreResponseSchema)
 
 // LocationType
-export const LocationTypeResponseSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  storeId: z.number(),
-  createdAt: dateString,
-  updatedAt: dateString,
-})
 export const LocationTypeListResponseSchema = dataOf(z.array(LocationTypeResponseSchema))
 export const LocationTypeSingleResponseSchema = dataOf(LocationTypeResponseSchema)
 
 // Location
-export const LocationResponseSchema = z.object({
-  id: z.number(),
-  number: z.number(),
-  locationTypeId: z.number(),
-  storeId: z.number(),
-  parentId: z.number().nullable(),
-  displayName: z.string(),
-  createdAt: dateString,
-  updatedAt: dateString,
-})
-export const LocationWithChildrenResponseSchema = LocationResponseSchema.extend({
-  children: z.array(LocationResponseSchema),
-})
 export const LocationListResponseSchema = dataOf(z.array(LocationWithChildrenResponseSchema))
 export const LocationSingleResponseSchema = dataOf(LocationWithChildrenResponseSchema)
 
 // MovementType
-export const MovementTypeResponseSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  behavior: z.enum(['entrada', 'saida', 'encomenda']),
-  storeId: z.number(),
-  createdAt: dateString,
-  updatedAt: dateString,
-})
 export const MovementTypeListResponseSchema = dataOf(z.array(MovementTypeResponseSchema))
 export const MovementTypeSingleResponseSchema = dataOf(MovementTypeResponseSchema)

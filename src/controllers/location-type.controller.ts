@@ -5,6 +5,7 @@ import { LocationTypeRequestSchema } from '../schemas/location-type.schema'
 import { createLocationTypeService } from '../services/location-type.service'
 import { requireRole } from '../middlewares/role.middleware'
 import { storeIdHeader, errorResponses, idPathParam, queryParam } from '../docs/openapi'
+import { getServiceDeps } from '../lib/service-deps'
 import { mapResponses } from '../lib/openapi'
 import {
   LocationTypeListResponseSchema,
@@ -33,7 +34,7 @@ locationTypeController.get(
   requireRole('admin', 'operator', 'viewer'),
   async (c) => {
     const search = c.req.valid('query')
-    const service = createLocationTypeService(c)
+    const service = createLocationTypeService(getServiceDeps(c))
     const data = await service.list(search)
     return c.json({ data })
   },
@@ -60,7 +61,7 @@ locationTypeController.post(
   requireRole('admin'),
   async (c) => {
     const body = c.req.valid('json')
-    const service = createLocationTypeService(c)
+    const service = createLocationTypeService(getServiceDeps(c))
     const data = await service.create(body)
     return c.json({ data }, 201)
   },
@@ -88,7 +89,7 @@ locationTypeController.put(
   async (c) => {
     const { id } = c.req.valid('param')
     const body = c.req.valid('json')
-    const service = createLocationTypeService(c)
+    const service = createLocationTypeService(getServiceDeps(c))
     const data = await service.update(id, body)
     return c.json({ data })
   },
@@ -114,7 +115,7 @@ locationTypeController.delete(
   requireRole('admin'),
   async (c) => {
     const { id } = c.req.valid('param')
-    const service = createLocationTypeService(c)
+    const service = createLocationTypeService(getServiceDeps(c))
     const data = await service.remove(id)
     return c.json({ data })
   },

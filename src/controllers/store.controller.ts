@@ -5,6 +5,7 @@ import { StoreRequestSchema } from '../schemas/store.schema'
 import { createStoreService } from '../services/store.service'
 import { requireRole } from '../middlewares/role.middleware'
 import { errorResponses, idPathParam, queryParam } from '../docs/openapi'
+import { getServiceDeps } from '../lib/service-deps'
 import { mapResponses } from '../lib/openapi'
 import { StoreListResponseSchema, StoreSingleResponseSchema } from '../docs/response-schemas'
 
@@ -30,7 +31,7 @@ storeController.get(
   requireRole('admin'),
   async (c) => {
     const search = c.req.valid('query')
-    const service = createStoreService(c)
+    const service = createStoreService(getServiceDeps(c))
     const data = await service.list(search)
     return c.json({ data })
   },
@@ -52,7 +53,7 @@ storeController.post(
   requireRole('admin'),
   async (c) => {
     const body = c.req.valid('json')
-    const service = createStoreService(c)
+    const service = createStoreService(getServiceDeps(c))
     const data = await service.create(body)
     return c.json({ data }, 201)
   },
@@ -75,7 +76,7 @@ storeController.get(
   requireRole('admin'),
   async (c) => {
     const { id } = c.req.valid('param')
-    const service = createStoreService(c)
+    const service = createStoreService(getServiceDeps(c))
     const data = await service.getById(id)
     return c.json({ data })
   },
@@ -100,7 +101,7 @@ storeController.put(
   async (c) => {
     const { id } = c.req.valid('param')
     const body = c.req.valid('json')
-    const service = createStoreService(c)
+    const service = createStoreService(getServiceDeps(c))
     const data = await service.update(id, body)
     return c.json({ data })
   },
@@ -123,7 +124,7 @@ storeController.delete(
   requireRole('admin'),
   async (c) => {
     const { id } = c.req.valid('param')
-    const service = createStoreService(c)
+    const service = createStoreService(getServiceDeps(c))
     const data = await service.remove(id)
     return c.json({ data })
   },

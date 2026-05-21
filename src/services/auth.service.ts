@@ -1,9 +1,8 @@
-import type { Context } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { sign } from 'hono/jwt'
 import bcrypt from 'bcryptjs'
 import { toUserResponse } from '../models/user.model'
-import type { AppEnv } from '../types/hono-env'
+import type { ServiceDeps } from '../types/hono-env'
 
 function getSecret(): string {
   const secret = process.env.JWT_SECRET
@@ -22,8 +21,7 @@ function refreshTokenExpiry(): Date {
   return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 }
 
-export function createAuthService(c: Context<AppEnv>) {
-  const db = c.get('db')
+export function createAuthService({ db }: ServiceDeps) {
   const secret = getSecret()
 
   return {

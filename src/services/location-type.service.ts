@@ -1,17 +1,14 @@
-import type { Context } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { toLocationTypeResponse } from '../models/location-type.model'
-import type { AppEnv } from '../types/hono-env'
+import type { ServiceDeps } from '../types/hono-env'
+import { storeScope } from '../lib/scoped-query'
 
-export function createLocationTypeService(c: Context<AppEnv>) {
-  const db = c.get('db')
-  const storeId = c.get('storeId')
-
+export function createLocationTypeService({ db, storeId }: ServiceDeps) {
   return {
     async list(search: { q?: string }) {
       const rows = await db.locationType.findMany({
         where: {
-          ...(storeId ? { storeId } : {}),
+          ...storeScope(storeId),
           ...(search.q ? { name: { contains: search.q } } : {}),
         },
       })
@@ -32,7 +29,7 @@ export function createLocationTypeService(c: Context<AppEnv>) {
 
     async update(id: number, data: { name?: string }) {
       const row = await db.locationType.findFirst({
-        where: { id, ...(storeId ? { storeId } : {}) },
+        where: { id, ...storeScope(storeId) },
       })
       if (!row) throw new HTTPException(404, { message: 'Location type not found' })
 
@@ -49,7 +46,7 @@ export function createLocationTypeService(c: Context<AppEnv>) {
 
     async remove(id: number) {
       const row = await db.locationType.findFirst({
-        where: { id, ...(storeId ? { storeId } : {}) },
+        where: { id, ...storeScope(storeId) },
       })
       if (!row) throw new HTTPException(404, { message: 'Location type not found' })
 

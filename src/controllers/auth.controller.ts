@@ -6,6 +6,7 @@ import { createAuthService } from '../services/auth.service'
 import { authMiddleware } from '../middlewares/auth.middleware'
 import { requireRole } from '../middlewares/role.middleware'
 import { errorResponses, publicErrorResponses } from '../docs/openapi'
+import { getServiceDeps } from '../lib/service-deps'
 import { mapResponses } from '../lib/openapi'
 import {
   LoginResponseSchema,
@@ -30,7 +31,7 @@ authController.post(
   validator('json', AuthRequestSchema.LOGIN),
   async (c) => {
     const body = c.req.valid('json')
-    const service = createAuthService(c)
+    const service = createAuthService(getServiceDeps(c))
     const data = await service.login(body)
     return c.json({ data })
   },
@@ -50,7 +51,7 @@ authController.post(
   validator('json', AuthRequestSchema.REFRESH),
   async (c) => {
     const body = c.req.valid('json')
-    const service = createAuthService(c)
+    const service = createAuthService(getServiceDeps(c))
     const data = await service.refresh(body)
     return c.json({ data })
   },
@@ -71,7 +72,7 @@ authController.post(
   authMiddleware,
   async (c) => {
     const { sub } = c.get('jwtPayload')
-    const service = createAuthService(c)
+    const service = createAuthService(getServiceDeps(c))
     await service.logout(sub)
     return c.json({ data: null })
   },
@@ -95,7 +96,7 @@ authController.post(
   async (c) => {
     const { storeId } = c.req.valid('json')
     const { sub } = c.get('jwtPayload')
-    const service = createAuthService(c)
+    const service = createAuthService(getServiceDeps(c))
     const data = await service.switchStore(sub, storeId)
     return c.json({ data })
   },

@@ -1,3 +1,7 @@
+import { z } from 'zod'
+
+const dateString = z.string().datetime()
+
 export type StoreRow = {
   id: number
   name: string
@@ -10,12 +14,24 @@ export type StoreRow = {
   updatedAt: Date
 }
 
-export type StoreResponse = StoreRow
+export const StoreResponseSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  slug: z.string().nullable(),
+  address: z.string().nullable(),
+  phone: z.string().nullable(),
+  active: z.boolean(),
+  requireProductCode: z.boolean(),
+  createdAt: dateString,
+  updatedAt: dateString,
+})
+
+export type StoreResponse = z.infer<typeof StoreResponseSchema>
 
 export function toStoreResponse(row: StoreRow): StoreResponse {
   return {
     ...row,
-    createdAt: new Date(row.createdAt.toISOString()),
-    updatedAt: new Date(row.updatedAt.toISOString()),
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
   }
 }

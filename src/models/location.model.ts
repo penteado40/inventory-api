@@ -1,4 +1,7 @@
+import { z } from 'zod'
 import type { LocationTypeRow } from './location-type.model'
+
+const dateString = z.string().datetime()
 
 export type LocationRow = {
   id: number
@@ -11,13 +14,23 @@ export type LocationRow = {
   locationType: LocationTypeRow
 }
 
-export type LocationResponse = Omit<LocationRow, 'locationType'> & {
-  displayName: string
-}
+export const LocationResponseSchema = z.object({
+  id: z.number(),
+  number: z.number(),
+  locationTypeId: z.number(),
+  storeId: z.number(),
+  parentId: z.number().nullable(),
+  displayName: z.string(),
+  createdAt: dateString,
+  updatedAt: dateString,
+})
 
-export type LocationWithChildrenResponse = LocationResponse & {
-  children: LocationResponse[]
-}
+export const LocationWithChildrenResponseSchema = LocationResponseSchema.extend({
+  children: z.array(LocationResponseSchema),
+})
+
+export type LocationResponse = z.infer<typeof LocationResponseSchema>
+export type LocationWithChildrenResponse = z.infer<typeof LocationWithChildrenResponseSchema>
 
 export function toLocationResponse(row: LocationRow): LocationResponse {
   return {
@@ -27,8 +40,8 @@ export function toLocationResponse(row: LocationRow): LocationResponse {
     storeId: row.storeId,
     parentId: row.parentId,
     displayName: `${row.locationType.name} ${row.number}`,
-    createdAt: new Date(row.createdAt.toISOString()),
-    updatedAt: new Date(row.updatedAt.toISOString()),
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
   }
 }
 
