@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "inventory-api": {
+      "command": "node",
+      "args": ["./mcp/dist/stdio.js"],
+      "env": {
+        "API_URL": "http://localhost:3000"
+      }
+    }
+  }
+}
