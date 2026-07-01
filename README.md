@@ -1,280 +1,244 @@
 # inventory-api
 
-> ⚠️ Projeto em desenvolvimento ativo.
+> Multi-tenant REST API for inventory management — track product movements across multiple store locations with scoped authentication and role-based access control.
 
-API REST multi-tenant para gestão de inventário — controle de entrada e saída de produtos com isolamento por loja.
-
-## Stack
-
-| Camada | Tecnologia |
-|--------|------------|
-| HTTP | Hono |
-| Linguagem | TypeScript |
-| Banco de dados | PostgreSQL + Prisma |
-| Validação | Zod + `@hono/zod-validator` |
-| Documentação | hono-openapi + Scalar |
-| Auth | JWT HS256 (access 15min + refresh 7d) |
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
+![Hono](https://img.shields.io/badge/Hono-E36002?style=flat&logo=hono&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=flat&logo=prisma&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)
 
 ---
 
-## Instalação e setup local
+## Overview
 
-### Pré-requisitos
+inventory-api is a production-grade multi-tenant backend built to handle inventory operations across isolated store environments. Each store operates within its own data boundary — users, products, locations, and movement records are all scoped to a store at the middleware level, never trusting client-supplied identifiers.
 
-- Node.js
-- Docker e Docker Compose
+The project explores two real architectural challenges: **multi-tenancy without schema-per-tenant** (using middleware-enforced scoping over a shared schema) and **stateless JWT auth with short-lived access tokens and server-side refresh token invalidation**.
 
-### 1. Clone o repositório
-
-```bash
-git clone https://github.com/penteado40/inventory-api.git
-cd inventory-api
-```
-
-### 2. Configure as variáveis de ambiente
-
-```bash
-cp .env.example .env
-```
-
-Edite o `.env` com suas configurações (veja a seção [Variáveis de ambiente](#variáveis-de-ambiente)).
-
-### 3. Suba o banco de dados
-
-```bash
-docker compose up -d
-```
-
-### 4. Instale as dependências
-
-```bash
-npm install
-```
-
-### 5. Execute as migrations
-
-```bash
-npx prisma migrate dev
-```
-
-### 6. Rode o seed inicial
-
-Cria o usuário admin e a loja padrão:
-
-```bash
-npm run seed
-```
-
-### 7. Inicie o servidor
-
-```bash
-npm run dev
-```
-
-A API estará disponível em `http://localhost:3000/api`.
-A documentação interativa (Scalar) estará em `http://localhost:3000/api/docs`.
+**Key capabilities:**
+- Store-scoped JWT auth with three roles (`admin`, `operator`, `viewer`)
+- Product movement tracking with payment registration and cancellation with automatic item revert
+- Hierarchical location types (e.g. warehouse → aisle → shelf)
+- Auto-generated interactive API docs via OpenAPI + Scalar
+- Soft deletes and referential integrity guards on all critical entities
 
 ---
 
-## Variáveis de ambiente
+## Architecture
 
-| Variável | Obrigatória | Descrição |
-|----------|-------------|-----------|
-| `DATABASE_URL` | ✅ | URL de conexão com o PostgreSQL |
-| `JWT_SECRET` | ✅ | Secret para assinar e verificar JWTs |
-| `ADMIN_EMAIL` | ✅ | Email do admin padrão (seed) |
-| `ADMIN_PASSWORD` | ✅ | Senha do admin padrão (seed) |
-| `ADMIN_NAME` | ✅ | Nome do admin padrão (seed) |
-| `DEFAULT_STORE_NAME` | ⚪ | Nome da loja padrão — default: `"Loja Principal"` |
-| `DEFAULT_STORE_SLUG` | ⚪ | Slug da loja padrão — default: `"loja-principal"` |
+### Request lifecycle
 
----
-
-## Arquitetura
-
-### Fluxo de um request protegido
+Every protected request passes through a deliberate middleware chain before reaching the controller:
 
 ```
-HTTP request
-  → db middleware            injeta cliente de banco no contexto
-  → cors middleware          headers CORS
-  → [rotas públicas]         POST /auth/login, POST /auth/refresh
-  → auth.middleware          verifica JWT, injeta jwtPayload
-  → storeContext.middleware  resolve storeId do JWT ou X-Store-Id
-  → validator                valida entrada via Zod
-  → requireRole              checa permissão
-  → controller               chama service, retorna { data }
-  → service                  lógica de negócio, acesso ao banco
-  → model mapper             formata resposta, omite campos sensíveis
-  → onError global           HTTPException | ZodError | Error genérico
+HTTP Request
+  └─ db middleware           Injects Prisma client into Hono context
+  └─ cors middleware         Sets CORS headers
+  └─ [public routes]         POST /auth/login, POST /auth/refresh
+  └─ auth.middleware         Verifies JWT signature, injects jwtPayload
+  └─ storeContext.middleware Resolves storeId from JWT or X-Store-Id header
+  └─ validator               Validates request body/params with Zod
+  └─ requireRole()           Guards route by role
+  └─ controller              Calls service, returns { data }
+  └─ service                 Business logic + Prisma access
+  └─ model mapper            Shapes response, strips sensitive fields
+  └─ onError (global)        Handles HTTPException | ZodError | Error
 ```
 
-### Estrutura de pastas
+The critical design point: `storeId` is **never** read from the request body. It is always resolved by the `storeContext` middleware from the authenticated JWT payload. Admins can switch store context via the `X-Store-Id` header, which is validated against their permission scope.
+
+### Project structure
 
 ```
 src/
-├── index.ts                        # Wiring: app, middlewares, routes
-├── types.ts                        # AppEnv, AppVariables, tipos globais
-├── controllers/                    # Handlers HTTP — sem lógica de negócio
-├── services/                       # Lógica de negócio — sem HTTP
-├── schemas/                        # Validação Zod de entrada HTTP
-├── models/                         # Tipos TypeScript + mappers de resposta
+├── index.ts                        # App bootstrap, middleware registration, route mounting
+├── types.ts                        # AppEnv, AppVariables, shared global types
+├── controllers/                    # HTTP handlers — no business logic, no Prisma
+├── services/                       # Business logic — no HTTP concerns
+├── schemas/                        # Zod schemas for request validation
+├── models/                         # TypeScript types + response mappers
 ├── middlewares/
-│   ├── auth.middleware.ts           # Verifica JWT, injeta jwtPayload
-│   ├── store-context.middleware.ts  # Resolve e injeta storeId
-│   └── role.middleware.ts          # Factory requireRole(...roles)
+│   ├── auth.middleware.ts           # JWT verification + payload injection
+│   ├── store-context.middleware.ts  # Resolves and injects storeId into context
+│   └── role.middleware.ts           # requireRole(...roles) factory
 ├── routes/
-│   ├── index.ts                    # Barrel — agrega todos os controllers
-│   └── *.routes.ts                 # Re-export de cada controller
+│   ├── index.ts                    # Barrel — aggregates all routes
+│   └── *.routes.ts                 # Per-module route definitions
 └── scripts/
-    └── seed.ts                     # Cria admin + loja padrão
+    └── seed.ts                     # Seeds admin user and default store
 ```
-
-### Convenções
-
-- Respostas de sucesso: `{ "data": ... }`
-- Respostas de erro: `{ "errors": "..." }`
-- URLs em inglês, substantivos no plural
-- JSON em camelCase
-- `storeId` nunca recebido via body — sempre extraído do contexto Hono
-- Lógica de negócio e Prisma exclusivamente nos services
 
 ---
 
-## Autenticação e Roles
+## Key Technical Decisions
 
-A API usa JWT HS256 com dois tokens:
+### Hono over Express
+Hono provides first-class TypeScript support with typed context variables (`AppEnv`), built-in Zod validator middleware, and native OpenAPI integration. The `c.get('storeId')` pattern makes middleware-injected values fully typed throughout the request chain.
 
-| Token | Validade |
-|-------|----------|
-| Access token | 15 minutos |
-| Refresh token | 7 dias |
+### Dual-token JWT strategy
+Access tokens expire in 15 minutes to limit exposure. Refresh tokens (7-day TTL) are stored server-side, enabling revocation on logout — something pure stateless JWT cannot do. `POST /auth/switch-store` issues a new access token scoped to a different store without requiring re-login.
 
-Todas as rotas (exceto `/auth/login` e `/auth/refresh`) exigem o header:
+### Shared schema multi-tenancy
+Each request resolves a `storeId` at the middleware level and propagates it via Hono context. All Prisma queries are implicitly scoped: services receive `storeId` as a parameter and never query across tenant boundaries. This avoids schema-per-tenant complexity while maintaining strict isolation.
 
-```http
-Authorization: Bearer <access_token>
-```
+### Prisma for query safety
+Raw SQL was deliberately avoided. Prisma's typed query builder prevents SQL injection, generates TypeScript types from the schema, and makes migration history explicit and reviewable.
 
-### Perfis de acesso
-
-| Role | storeId no token | Acesso |
-|------|-----------------|--------|
-| `admin` | `null` | Global — filtra por loja via header `X-Store-Id` |
-| `operator` | `number` | Restrito à própria loja |
-| `viewer` | `number` | Restrito à própria loja (somente leitura) |
-
-O `storeId` é resolvido automaticamente pelo middleware `storeContext` — admins podem alternar entre lojas enviando o header `X-Store-Id`.
+### Zod for boundary validation
+All external input (body, params, query) is validated with Zod schemas before reaching controllers. The `@hono/zod-validator` middleware integrates Zod errors directly into Hono's error pipeline, returning consistent `{ errors }` responses.
 
 ---
 
-## Endpoints
+## API Reference
 
-A documentação interativa completa está disponível em `/api/docs`. Abaixo, um mapa dos módulos disponíveis.
+Full interactive documentation is available at `/api/docs` (powered by Scalar). Below is a summary of available modules.
 
 ### Auth — `/api/auth`
 
-| Método | Rota | Descrição | Autenticação |
-|--------|------|-----------|--------------|
-| `POST` | `/auth/login` | Login com email e senha | Pública |
-| `POST` | `/auth/refresh` | Renova o access token | Pública |
-| `POST` | `/auth/logout` | Invalida o refresh token | ✅ |
-| `POST` | `/auth/switch-store` | Troca de loja ativa (admin) | ✅ |
+| Method | Route | Description | Auth |
+|--------|-------|-------------|------|
+| `POST` | `/auth/login` | Authenticate with email and password | Public |
+| `POST` | `/auth/refresh` | Exchange refresh token for new access token | Public |
+| `POST` | `/auth/logout` | Invalidate refresh token server-side | ✅ |
+| `POST` | `/auth/switch-store` | Issue new access token scoped to a different store | ✅ admin |
 
 ### Users — `/api/users`
 
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| `GET` | `/users` | Lista usuários |
-| `POST` | `/users` | Cria usuário |
-| `GET` | `/users/:id` | Busca usuário por ID |
-| `PUT` | `/users/:id` | Atualiza usuário |
-| `DELETE` | `/users/:id` | Remove usuário |
+| Method | Route | Description |
+|--------|-------|-------------|
+| `GET` | `/users` | List users (store-scoped) |
+| `POST` | `/users` | Create user |
+| `GET` | `/users/:id` | Get user by ID |
+| `PUT` | `/users/:id` | Update user |
+| `DELETE` | `/users/:id` | Remove user |
 
 ### Stores — `/api/stores`
 
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| `GET` | `/stores` | Lista lojas |
-| `POST` | `/stores` | Cria loja |
-| `GET` | `/stores/:id` | Busca loja por ID |
-| `PUT` | `/stores/:id` | Atualiza loja (slug imutável) |
-| `DELETE` | `/stores/:id` | Desativa loja (soft delete) |
+| Method | Route | Description |
+|--------|-------|-------------|
+| `GET` | `/stores` | List stores |
+| `POST` | `/stores` | Create store |
+| `GET` | `/stores/:id` | Get store by ID |
+| `PUT` | `/stores/:id` | Update store (slug is immutable after creation) |
+| `DELETE` | `/stores/:id` | Soft-delete store |
 
-### Location Types — `/api/location-types`
+### Locations — `/api/location-types` · `/api/locations`
 
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| `GET` | `/location-types` | Lista tipos de localização |
-| `POST` | `/location-types` | Cria tipo de localização |
-| `GET` | `/location-types/:id` | Busca por ID |
-| `PUT` | `/location-types/:id` | Atualiza |
-| `DELETE` | `/location-types/:id` | Remove (bloqueado se houver localizações vinculadas) |
-
-### Locations — `/api/locations`
-
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| `GET` | `/locations` | Lista localizações |
-| `POST` | `/locations` | Cria localização |
-| `GET` | `/locations/:id` | Busca por ID |
-| `PUT` | `/locations/:id` | Atualiza |
-| `DELETE` | `/locations/:id` | Remove (bloqueado se houver produtos ou filhos vinculados) |
-
-### Movement Types — `/api/movement-types`
-
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| `GET` | `/movement-types` | Lista tipos de movimento |
-| `POST` | `/movement-types` | Cria tipo (`behavior` imutável após criação) |
-| `GET` | `/movement-types/:id` | Busca por ID |
-| `PUT` | `/movement-types/:id` | Atualiza nome |
-| `DELETE` | `/movement-types/:id` | Remove (bloqueado se houver movimentos vinculados) |
+Hierarchical location system. Location types define the structure (e.g. Warehouse, Aisle, Shelf); locations are instances. Deletion is blocked if child locations or products are linked.
 
 ### Products — `/api/products`
 
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| `GET` | `/products` | Lista produtos ativos |
-| `POST` | `/products` | Cria produto |
-| `GET` | `/products/:id` | Busca por ID |
-| `PUT` | `/products/:id` | Atualiza produto |
-| `DELETE` | `/products/:id` | Remove produto |
+| Method | Route | Description |
+|--------|-------|-------------|
+| `GET` | `/products` | List active products |
+| `POST` | `/products` | Create product |
+| `GET` | `/products/:id` | Get product by ID |
+| `PUT` | `/products/:id` | Update product |
+| `DELETE` | `/products/:id` | Remove product |
 
 ### Movements — `/api/movements`
 
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| `GET` | `/movements` | Lista movimentos |
-| `POST` | `/movements` | Cria cabeçalho do movimento |
-| `GET` | `/movements/:id` | Busca por ID |
-| `PUT` | `/movements/:id` | Atualiza movimento |
-| `DELETE` | `/movements/:id` | Cancela movimento (reverte itens não finalizados) |
-| `POST` | `/movements/:id/items` | Adiciona item ao movimento |
-| `PUT` | `/movements/:id/items/:itemId` | Atualiza item |
-| `DELETE` | `/movements/:id/items/:itemId` | Remove/cancela item |
-| `POST` | `/movements/:id/payments` | Registra pagamento |
+The core of the inventory domain. Movements represent stock entries and exits, composed of items and optional payment records.
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `GET` | `/movements` | List movements |
+| `POST` | `/movements` | Create movement header |
+| `GET` | `/movements/:id` | Get movement with items and payments |
+| `DELETE` | `/movements/:id` | Cancel movement — reverts non-finalized items |
+| `POST` | `/movements/:id/items` | Add item to movement |
+| `PUT` | `/movements/:id/items/:itemId` | Update movement item |
+| `DELETE` | `/movements/:id/items/:itemId` | Remove or cancel item |
+| `POST` | `/movements/:id/payments` | Register payment for movement |
 
 ### Stats — `/api/stats`
 
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| `GET` | `/stats` | Estatísticas de estoque e movimentos |
+| Method | Route | Description |
+|--------|-------|-------------|
+| `GET` | `/stats` | Stock summary and movement aggregates |
 
 ---
 
-## Status de implementação
+## Role Matrix
 
-| Fase | Módulos | Status |
-|------|---------|--------|
-| 1 | Auth, Store, Seeds | ✅ Concluído |
-| 2 | LocationTypes, Locations, MovementTypes | 🔄 Em progresso |
-| 3 | Products | — |
-| 4 | Movements, MovementItems, MovementPayments | — |
-| 5 | Stats | — |
+| Role | storeId in JWT | Scope |
+|------|---------------|-------|
+| `admin` | `null` | Global access — switches store context via `X-Store-Id` |
+| `operator` | `number` | Restricted to own store, read/write |
+| `viewer` | `number` | Restricted to own store, read-only |
 
 ---
 
-## Licença
+## Response conventions
 
-Projeto pessoal. Todos os direitos reservados.
+- **Success:** `{ "data": ... }`
+- **Error:** `{ "errors": "..." }`
+- URLs in English, plural nouns
+- JSON keys in camelCase
+- `storeId` never accepted from request body
+
+---
+
+## Local Setup
+
+**Prerequisites:** Node.js 18+, Docker
+
+```bash
+# 1. Clone
+git clone https://github.com/penteado40/inventory-api.git
+cd inventory-api
+
+# 2. Environment
+cp .env.example .env
+# Fill in the values — see table below
+
+# 3. Start database
+docker compose up -d
+
+# 4. Install dependencies
+npm install
+
+# 5. Run migrations
+npx prisma migrate dev
+
+# 6. Seed default admin and store
+npm run seed
+
+# 7. Start dev server
+npm run dev
+```
+
+API: `http://localhost:3000/api`
+Docs: `http://localhost:3000/api/docs`
+
+### Environment variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | ✅ | PostgreSQL connection string |
+| `JWT_SECRET` | ✅ | Secret for signing and verifying JWTs |
+| `ADMIN_EMAIL` | ✅ | Default admin email (seed) |
+| `ADMIN_PASSWORD` | ✅ | Default admin password (seed) |
+| `ADMIN_NAME` | ✅ | Default admin name (seed) |
+| `DEFAULT_STORE_NAME` | ⚪ | Default store name — defaults to `"Loja Principal"` |
+| `DEFAULT_STORE_SLUG` | ⚪ | Default store slug — defaults to `"loja-principal"` |
+
+---
+
+## Implementation Status
+
+| Phase | Modules | Status |
+|-------|---------|--------|
+| 1 | Auth, Stores, Seeds | ✅ Done |
+| 2 | LocationTypes, Locations, MovementTypes | 🔄 In progress |
+| 3 | Products | Planned |
+| 4 | Movements, MovementItems, MovementPayments | Planned |
+| 5 | Stats | Planned |
+
+---
+
+## Author
+
+**Felipe Penteado** — Full Stack Engineer
+[felipepenteado.com.br](https://felipepenteado.com.br) · [LinkedIn](https://linkedin.com/in/felipepenteado) · [GitHub](https://github.com/penteado40)
